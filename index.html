@@ -322,6 +322,7 @@ const CONFIG = {
 const AudioBank = {
   pools: {},
   poolSize: 3,
+  unlockEls: [],
   register(key, base64){
     const src = 'data:audio/mpeg;base64,' + base64;
     const pool = [];
@@ -338,25 +339,22 @@ const AudioBank = {
     for(const key in map){ this.register(key, map[key]); }
   },
   // Must be called synchronously inside a user tap/click handler.
-  // Playing (and immediately pausing) each element once inside the gesture
-  // unlocks it for later programmatic playback in most mobile webviews.
-  // Muted during this trick so the person doesn't hear all 12 clips fire
-  // at once — only the unlock permission matters here, not the sound.
+  // Instead of touching the real GOOD/BAD/KIDDING/FILL clips (which used
+  // to briefly play all at once before muting could take effect), this
+  // plays a handful of genuinely-silent clips. That's enough to satisfy
+  // "user just interacted with audio" in most mobile webviews, and it
+  // never risks making noise since there's no real content to leak.
   unlockAll(){
-    Object.values(this.pools).forEach(({pool})=>{
-      pool.forEach(a=>{
-        try{
-          const wasMuted = a.muted;
-          a.muted = true;
-          const p = a.play();
-          if(p && p.then){
-            p.then(()=>{ a.pause(); a.currentTime = 0; a.muted = wasMuted; }).catch(()=>{ a.muted = wasMuted; });
-          } else {
-            a.pause(); a.currentTime = 0; a.muted = wasMuted;
-          }
-        }catch(e){}
-      });
-    });
+    const silentSrc = 'data:audio/wav;base64,UklGRrQBAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YZABAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA';
+    for(let i=0;i<4;i++){
+      const a = new Audio(silentSrc);
+      a.playsInline = true;
+      this.unlockEls.push(a);
+      try{
+        const p = a.play();
+        if(p && p.catch) p.catch(()=>{});
+      }catch(e){}
+    }
   },
   play(key){
     const entry = this.pools[key];
