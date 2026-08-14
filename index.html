@@ -555,9 +555,6 @@ function catchObject(obj){
     popFeedback(obj.xPct, false);
     if(state.madPct >= 100){
       triggerMadOverload();
-    } else {
-      // the mad meter just grew — layer the "kidding me" cue on top
-      setTimeout(()=>AudioBank.play('grow'), 90);
     }
   }
   scoreVal.textContent = state.score;
