@@ -340,15 +340,19 @@ const AudioBank = {
   // Must be called synchronously inside a user tap/click handler.
   // Playing (and immediately pausing) each element once inside the gesture
   // unlocks it for later programmatic playback in most mobile webviews.
+  // Muted during this trick so the person doesn't hear all 12 clips fire
+  // at once — only the unlock permission matters here, not the sound.
   unlockAll(){
     Object.values(this.pools).forEach(({pool})=>{
       pool.forEach(a=>{
         try{
+          const wasMuted = a.muted;
+          a.muted = true;
           const p = a.play();
           if(p && p.then){
-            p.then(()=>{ a.pause(); a.currentTime = 0; }).catch(()=>{});
+            p.then(()=>{ a.pause(); a.currentTime = 0; a.muted = wasMuted; }).catch(()=>{ a.muted = wasMuted; });
           } else {
-            a.pause(); a.currentTime = 0;
+            a.pause(); a.currentTime = 0; a.muted = wasMuted;
           }
         }catch(e){}
       });
@@ -541,6 +545,7 @@ function collisionLoop(){
 }
 
 function catchObject(obj){
+  if(!state.running) return; // round may have just ended from a catch earlier in this same frame
   obj.el.remove();
   if(obj.isGood){
     state.score += 10;
@@ -578,6 +583,7 @@ function popFeedback(xPct, good){
 }
 
 function triggerMadOverload(){
+  if(!state.running) return; // guard against double-trigger in the same frame
   state.running = false; // stop catches immediately, game is over
   clearTimeout(state.spawnTimer);
   clearInterval(state.tickTimer);
